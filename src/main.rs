@@ -1,6 +1,8 @@
-use find::list_files;
-use std::io;
-use std::fs::{self};
+mod config;
+
+use find::{search_for_file};
+use std::{env, process};
+use crate::config::Config;
 
 /*
 
@@ -16,18 +18,14 @@ fd query -s
 */
 
 
-fn main()  -> io::Result<()>{
-    list_files();
+fn main() {
+    let args: Vec<String> = env::args().collect();
 
-    let mut entries = fs::read_dir(".")?
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()?;
+    let config = Config::new(&args).unwrap_or_else(|err| {
+        eprintln!("Problem parsing arguments: {}", err);
+        process::exit(1);
+    });
 
-    // The order in which `read_dir` returns entries is not guaranteed. If reproducible
-    // ordering is required the entries should be explicitly sorted.
+    search_for_file(config.query, config.path, config.is_substring);
 
-    entries.sort();
-
-    println!("{:?}", entries);
-    Ok(())
 }

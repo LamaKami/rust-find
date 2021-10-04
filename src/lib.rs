@@ -1,8 +1,45 @@
-use std::io;
-use std::fs::{self, DirEntry};
-use std::path::Path;
+use std::{process};
+use std::fs::{self, DirEntry, ReadDir};
 use std::path::PathBuf;
-use std::fs::metadata;
+use std::error::Error;
+
+pub fn search_for_file(query: String, path: String, is_substring: bool){
+    if is_substring {
+        search_for_substring(query, path)
+    }
+    else {
+        search_for_string(query, path)
+    }
+}
+
+fn search_for_substring(query: String, path: String){
+    for entry in get_directory_entries(path){
+        if entry.as_ref().unwrap().path().is_dir(){
+            search_for_substring(query.clone(), entry.as_ref().unwrap().path().to_str().unwrap().to_owned());
+        }
+        else if entry.as_ref().unwrap().file_name().to_str().unwrap().contains(&query){
+            println!("{}", entry.as_ref().unwrap().path().display());
+        }
+    }
+}
+
+fn search_for_string(query: String, path: String){
+    for entry in get_directory_entries(path){
+        if entry.as_ref().unwrap().path().is_dir(){
+            search_for_string(query.clone(), entry.as_ref().unwrap().path().to_str().unwrap().to_owned());
+        }
+        else if entry.as_ref().unwrap().file_name().to_str().unwrap().eq(&query) {
+            println!("{}", entry.as_ref().unwrap().path().display());
+        }
+    }
+}
+
+fn get_directory_entries(path: String) -> ReadDir{
+    return fs::read_dir(&path).unwrap_or_else(|err| {
+        eprintln!("Reading path produced Error: {}",err);
+        process::exit(1);
+    });
+}
 
 pub fn list_files(){
     // unwrap könnte fehl schlagen wenn keine Rechte vorhanden sind
@@ -12,35 +49,16 @@ pub fn list_files(){
         println!("{}", path.as_ref().unwrap().path().display());
         
         check_if_directory_or_files(path.as_ref().unwrap().path());
-
-        check_if_directory_or_file(path.unwrap().path().into_os_string().into_string().unwrap());
     }
 }
+
 
 fn check_if_directory_or_files(path: PathBuf){
     println!("{}", path.is_dir());
     println!("{}", path.is_file());
-
 }
 
-fn check_if_directory_or_file(path: String) {
-    let md = metadata(path).unwrap();
-    println!("{}", md.is_dir());
-    println!("{}", md.is_file());
 
-}
 
-pub fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
-    if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                visit_dirs(&path, cb)?;
-            } else {
-                cb(&entry);
-            }
-        }
-    }
-    Ok(())
-}
+
+
